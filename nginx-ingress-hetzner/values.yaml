@@ -1,0 +1,12 @@
+controller:
+  replicaCount: 1
+  service:
+    type: LoadBalancer
+    annotations:
+      load-balancer.hetzner.cloud/type: "lb11"
+      load-balancer.hetzner.cloud/uses-proxyprotocol: "true"
+    externalTrafficPolicy: Local
+  config:
+    use-proxy-protocol: "true"
+  ingressClassResource:
+    default: true
