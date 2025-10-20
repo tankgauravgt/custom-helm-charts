@@ -1,6 +1,6 @@
 # NGINX Ingress for Hetzner Cloud
 
-Production-ready NGINX Ingress Controller configuration for Hetzner Cloud Kubernetes.
+NGINX Ingress Controller configuration for Hetzner Cloud Kubernetes.
 
 ## Installation
 
@@ -11,7 +11,9 @@ helm repo update
 
 # Install
 helm install nginx-ingress ingress-nginx/ingress-nginx \
-  -n ingress-nginx --create-namespace -f values.yaml
+  -f values.yaml \
+  --namespace ingress-nginx \
+  --create-namespace
 
 # Get Load Balancer IP (wait 1-2 minutes)
 kubectl get svc -n ingress-nginx

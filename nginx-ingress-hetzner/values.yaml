@@ -1,12 +1,51 @@
 controller:
   replicaCount: 1
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+  nodeSelector:
+    node.kubernetes.io/instance-type: cax41
+    topology.kubernetes.io/region: fsn1
+
+  tolerations:
+    - key: "node.kubernetes.io/instance-type"
+      operator: "Equal"
+      value: "cax41"
+      effect: "NoSchedule"
+
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: ingress-nginx
+            topologyKey: kubernetes.io/hostname
+
+  admissionWebhooks:
+    patch:
+      nodeSelector:
+        node.kubernetes.io/instance-type: cax41
+      tolerations:
+        - key: "node.kubernetes.io/instance-type"
+          operator: "Equal"
+          value: "cax41"
+          effect: "NoSchedule"
+      affinity: {}
+
   service:
     type: LoadBalancer
-    annotations:
-      load-balancer.hetzner.cloud/type: "lb11"
-      load-balancer.hetzner.cloud/uses-proxyprotocol: "true"
     externalTrafficPolicy: Local
+    annotations:
+      load-balancer.hetzner.cloud/uses-proxyprotocol: "true"
+      load-balancer.hetzner.cloud/type: "lb11"
+
   config:
     use-proxy-protocol: "true"
-  ingressClassResource:
-    default: true
