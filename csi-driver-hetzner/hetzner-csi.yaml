@@ -1,0 +1,31 @@
+controller:
+    replicaCount: 2
+    priorityClassName: "system-node-critical"
+    hcloudToken:
+        existingSecret:
+            name: cfke-fleet-secrets # `SECRET_NAME`: use `{fleetname}-secrets`
+            key: hetzner
+    nodeSelector:
+        cfke.io/provider: hetzner
+    affinity:
+        podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+                -   weight: 1
+                    podAffinityTerm:
+                        labelSelector:
+                            matchExpressions:
+                                -   key: app.kubernetes.io/component
+                                    operator: In
+                                    values:
+                                        - controller
+                                -   key: app.kubernetes.io/name
+                                    operator: In
+                                    values:
+                                        - hcloud-csi
+                        topologyKey: "kubernetes.io/hostname"
+
+node:
+    priorityClassName: "system-node-critical"
+    hostNetwork: true
+    nodeSelector:
+        cfke.io/provider: hetzner
