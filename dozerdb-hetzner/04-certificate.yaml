@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: dozerdb-tls
   dnsNames:
-    - "*.example.com"
+    - {{ "*.example.com" }}
   issuerRef:
     name: letsencrypt-prod
     kind: Issuer

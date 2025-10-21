@@ -5,7 +5,7 @@ metadata:
   namespace: dozerdb-ns
 spec:
   acme:
-    email: hello@example.com
+    email: {{ hello@example.com }}
     server: https://acme-v02.api.letsencrypt.org/directory
     privateKeySecretRef:
       name: letsencrypt-prod
