@@ -1,0 +1,9 @@
+# Resource 0: Cloudflare API Token Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudflare-api-token
+  namespace: dozerdb-ns
+type: Opaque
+stringData:
+  api-token: {{ API_TOKEN_PLACEHOLDER }}
