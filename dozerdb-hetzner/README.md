@@ -5,11 +5,18 @@ Production-ready DozerDB (Neo4j-based graph database) deployment on Hetzner Clou
 ## Features
 
 - ✅ SSL/TLS encryption for HTTPS and Bolt connections
+- ✅ Automatic HTTP to HTTPS redirection (sidecar pattern)
+- ✅ **Single LoadBalancer** for all traffic (cost-effective!)
 - ✅ Automatic Let's Encrypt certificate management
 - ✅ Persistent storage with Hetzner Cloud Volumes
 - ✅ APOC plugin pre-installed
-- ✅ Load Balancer for external access
 - ✅ StatefulSet for data persistence
+
+## 💰 Cost Optimization
+
+This setup uses **only ONE LoadBalancer** to handle all traffic (HTTP, HTTPS, and Bolt). The HTTP to HTTPS redirection is handled by a lightweight nginx sidecar running in the same pod as DozerDB.
+
+**Cost savings**: Eliminates the need for a second LoadBalancer or NGINX Ingress Controller!
 
 ## Prerequisites
 
@@ -102,11 +109,27 @@ kubectl apply -f 05-headless-service.yaml
 kubectl apply -f 06-loadbalancer.yaml
 ```
 
-### Step 6: Deploy DozerDB StatefulSet
+### Step 6: Create HTTP Redirect ConfigMap
+
+> **Important:** Before applying `08-http-redirect.yaml`, edit the nginx ConfigMap and replace all instances of `db.example.com` with your actual domain name.  
+> This ensures HTTP requests are properly redirected to your HTTPS endpoint.
+
+```bash
+kubectl apply -f 08-http-redirect.yaml
+```
+
+This creates the nginx configuration for the HTTP to HTTPS redirect sidecar.
+
+### Step 7: Deploy DozerDB StatefulSet
 
 ```bash
 kubectl apply -f 07-statefulset.yaml
 ```
+
+This deploys DozerDB with an HTTP redirect sidecar in the same pod:
+- Main container: DozerDB (HTTPS on 7474, Bolt on 7687)
+- Sidecar container: nginx:alpine (HTTP redirect on port 8080)
+- Both share the same LoadBalancer (cost-effective!)
 
 ## Verification
 
@@ -130,7 +153,10 @@ kubectl logs -n dozerdb-ns dozerdb-0 --follow
 kubectl get svc -n dozerdb-ns dozerdb-service
 ```
 
-Note the `EXTERNAL-IP` value.
+Note the `EXTERNAL-IP` value. This **single LoadBalancer** handles all traffic:
+- Port 80 (HTTP) → redirects to HTTPS
+- Port 443 (HTTPS) → DozerDB Neo4j Browser
+- Port 7687 (Bolt) → DozerDB database connections
 
 ### Update DNS Records
 
@@ -147,6 +173,11 @@ A     db.example.com    <EXTERNAL-IP>
 Open your browser and navigate to:
 ```
 https://db.example.com
+```
+
+**HTTP automatically redirects to HTTPS:**
+```
+http://db.example.com  →  https://db.example.com
 ```
 
 **Credentials:**
@@ -171,12 +202,22 @@ neo4j+s://db.example.com:7687
 | Service | Type | Ports | Purpose |
 |---------|------|-------|---------|
 | dozerdb-headless | ClusterIP (None) | 7474, 7687 | StatefulSet pod identity |
-| dozerdb-service | LoadBalancer | 443→7474, 7687→7687 | External access |
+| dozerdb-service | LoadBalancer | 80→8080, 443→7474, 7687→7687 | **Single LB for all traffic** |
 
 ### Ports
 
-- **7474**: HTTPS (Neo4j Browser and HTTP API)
+- **80**: HTTP on port 80 (LoadBalancer) → mapped to nginx sidecar port 8080 → redirects to HTTPS
+- **443/7474**: HTTPS (Neo4j Browser and HTTP API)
 - **7687**: Bolt protocol (database connections)
+
+### HTTP Redirect Architecture (Cost-Optimized!)
+
+Uses a **sidecar pattern** to minimize costs:
+- nginx:alpine runs as a sidecar in the DozerDB pod
+- Listens on port 8080 (mapped from LoadBalancer port 80)
+- Issues 301 redirect to HTTPS
+- **Only ONE LoadBalancer** for all traffic (saves money!)
+- Minimal resources: 32Mi memory, 50m CPU
 
 ### Storage
 
@@ -301,6 +342,7 @@ Remove resources in reverse order:
 
 ```bash
 kubectl delete -f 07-statefulset.yaml
+kubectl delete -f 08-http-redirect.yaml
 kubectl delete -f 06-loadbalancer.yaml
 kubectl delete -f 05-headless-service.yaml
 kubectl delete -f 04-certificate.yaml

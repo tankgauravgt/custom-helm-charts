@@ -18,7 +18,7 @@ spec:
   
   # Domains covered by this certificate
   dnsNames:
-    - {{ "*.example.com" }}
+    - '{{ DOMAIN_PLACEHOLDER }}'
   
   # Reference to the certificate issuer
   issuerRef:

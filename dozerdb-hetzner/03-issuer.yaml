@@ -15,7 +15,8 @@ metadata:
 spec:
   acme:
     # Email for Let's Encrypt notifications (certificate expiry, etc.)
-    email: {{ hello@example.com }}
+    # IMPORTANT: Replace '{{ EMAIL_PLACEHOLDER }}' with your actual email address
+    email: '{{ EMAIL_PLACEHOLDER }}'
     
     # Let's Encrypt production server
     server: https://acme-v02.api.letsencrypt.org/directory

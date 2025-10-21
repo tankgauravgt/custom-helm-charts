@@ -1,0 +1,28 @@
+# ==============================================================================
+# HTTP to HTTPS Redirect Configuration
+# ==============================================================================
+# ConfigMap for nginx sidecar that redirects HTTP to HTTPS
+# The sidecar runs alongside DozerDB in the same pod, sharing the LoadBalancer
+# This approach uses only ONE LoadBalancer to save costs!
+# ==============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-redirect-config
+  namespace: dozerdb-ns
+data:
+  nginx.conf: |
+    events {
+        worker_connections 1024;
+    }
+    
+    http {
+        server {
+            listen 8080;
+            server_name _;
+            
+            # Redirect all HTTP requests to HTTPS
+            return 301 https://$host$request_uri;
+        }
+    }

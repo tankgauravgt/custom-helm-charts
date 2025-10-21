@@ -1,11 +1,12 @@
 # ==============================================================================
 # DozerDB Load Balancer Service
 # ==============================================================================
-# Exposes DozerDB to external traffic via a Hetzner Cloud Load Balancer
+# Single LoadBalancer that handles all traffic:
+#   - HTTP (port 80) → http-redirect sidecar → redirects to HTTPS
+#   - HTTPS (port 443) → DozerDB on port 7474
+#   - Bolt (port 7687) → DozerDB bolt protocol
 #
-# Port Mappings:
-#   - External 443  → Internal 7474 (HTTPS/Neo4j Browser)
-#   - External 7687 → Internal 7687 (Bolt protocol)
+# This uses only ONE LoadBalancer to save costs!
 # ==============================================================================
 
 apiVersion: v1
@@ -16,12 +17,18 @@ metadata:
 spec:
   type: LoadBalancer
   
-  # Select pods with the 'dozerdb' label
+  # Select pods with the 'dozerdb' label (will include sidecar)
   selector:
     app: dozerdb
   
   # Port mappings
   ports:
+    # HTTP redirect
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+      name: http
+    
     # HTTPS access for Neo4j Browser and HTTP API
     - port: 443
       targetPort: 7474
