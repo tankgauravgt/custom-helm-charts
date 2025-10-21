@@ -1,12 +1,26 @@
+# ==============================================================================
+# DozerDB SSL/TLS Certificate
+# ==============================================================================
+# Requests a wildcard SSL/TLS certificate from Let's Encrypt
+# The certificate will be stored in a secret for use by DozerDB
+#
+# IMPORTANT: Replace {{ "*.example.com" }} with your actual domain
+# ==============================================================================
+
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: dozerdb-cert
   namespace: dozerdb-ns
 spec:
+  # Secret name where the certificate will be stored
   secretName: dozerdb-tls
+  
+  # Domains covered by this certificate
   dnsNames:
     - {{ "*.example.com" }}
+  
+  # Reference to the certificate issuer
   issuerRef:
     name: letsencrypt-prod
     kind: Issuer

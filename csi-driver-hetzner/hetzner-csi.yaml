@@ -1,31 +1,51 @@
-controller:
-    replicaCount: 2
-    priorityClassName: "system-node-critical"
-    hcloudToken:
-        existingSecret:
-            name: cfke-fleet-secrets # `SECRET_NAME`: use `{fleetname}-secrets`
-            key: hetzner
-    nodeSelector:
-        cfke.io/provider: hetzner
-    affinity:
-        podAntiAffinity:
-            preferredDuringSchedulingIgnoredDuringExecution:
-                -   weight: 1
-                    podAffinityTerm:
-                        labelSelector:
-                            matchExpressions:
-                                -   key: app.kubernetes.io/component
-                                    operator: In
-                                    values:
-                                        - controller
-                                -   key: app.kubernetes.io/name
-                                    operator: In
-                                    values:
-                                        - hcloud-csi
-                        topologyKey: "kubernetes.io/hostname"
+# ==============================================================================
+# Hetzner Cloud CSI Driver Configuration
+# ==============================================================================
+# This configuration deploys the Hetzner Cloud CSI driver for persistent
+# volume support in Kubernetes clusters running on Hetzner Cloud.
+# ==============================================================================
 
+# Controller Configuration
+# Manages volume lifecycle (create, delete, attach, detach)
+controller:
+  replicaCount: 2
+  priorityClassName: "system-node-critical"
+  
+  # Hetzner Cloud API Token Configuration
+  hcloudToken:
+    existingSecret:
+      name: cfke-fleet-secrets  # Use {fleetname}-secrets format
+      key: hetzner
+  
+  # Schedule only on Hetzner nodes
+  nodeSelector:
+    cfke.io/provider: hetzner
+  
+  # Pod Anti-Affinity
+  # Ensures controller replicas run on different nodes for high availability
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 1
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                    - controller
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                    - hcloud-csi
+            topologyKey: "kubernetes.io/hostname"
+
+# Node Configuration
+# Runs as a DaemonSet on each node to mount volumes
 node:
-    priorityClassName: "system-node-critical"
-    hostNetwork: true
-    nodeSelector:
-        cfke.io/provider: hetzner
+  priorityClassName: "system-node-critical"
+  hostNetwork: true
+  
+  # Schedule only on Hetzner nodes
+  nodeSelector:
+    cfke.io/provider: hetzner

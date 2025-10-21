@@ -1,4 +1,13 @@
-# Resource 0: Cloudflare API Token Secret
+# ==============================================================================
+# Cloudflare API Token Secret
+# ==============================================================================
+# Stores the Cloudflare API token for DNS-01 challenge verification
+# Used by cert-manager to issue Let's Encrypt certificates
+#
+# IMPORTANT: Replace {{ API_TOKEN_PLACEHOLDER }} with your actual Cloudflare
+#            API token before applying this manifest
+# ==============================================================================
+
 apiVersion: v1
 kind: Secret
 metadata:

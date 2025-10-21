@@ -1,65 +1,151 @@
-# NGINX Ingress for Hetzner Cloud
+# NGINX Ingress Controller for Hetzner Cloud
 
-NGINX Ingress Controller configuration for Hetzner Cloud Kubernetes.
+Production-ready NGINX Ingress Controller configuration optimized for Hetzner Cloud Kubernetes clusters.
+
+## Features
+
+- ✅ Hetzner Cloud Load Balancer integration (lb11 - €5.50/month)
+- ✅ PROXY protocol support (preserves client IP addresses)
+- ✅ Optimized resource allocation for cost efficiency
+- ✅ Node affinity for specific instance types
+- ✅ High availability with pod anti-affinity
 
 ## Installation
 
+### Step 1: Add Helm Repository
+
 ```bash
-# Add Helm repo (first time only)
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 helm repo update
+```
 
-# Install
+### Step 2: Install NGINX Ingress
+
+```bash
 helm install nginx-ingress ingress-nginx/ingress-nginx \
-  -f values.yaml \
   --namespace ingress-nginx \
-  --create-namespace
+  --create-namespace \
+  --values values.yaml
+```
 
-# Get Load Balancer IP (wait 1-2 minutes)
+### Step 3: Get Load Balancer IP
+
+Wait 1-2 minutes for the load balancer to provision, then:
+
+```bash
 kubectl get svc -n ingress-nginx
 ```
 
-## What's Included
+Look for the `EXTERNAL-IP` value - this is your load balancer's public IP.
 
-- Hetzner Load Balancer (lb11 - €5.50/month)
-- PROXY protocol (preserves client IPs)
-- Default ingress class
-- Single replica
+## Configuration
 
-## Customization
+### Load Balancer Types
 
-**Scale replicas:**
+The configuration uses Hetzner Load Balancer type `lb11` by default. You can change this in `values.yaml` or via Helm:
+
+| Type | Monthly Cost | Max Connections | Max Targets |
+|------|-------------|-----------------|-------------|
+| lb11 | €5.50       | 20,000          | 25          |
+| lb21 | €11.90      | 40,000          | 25          |
+| lb31 | €18.30      | 60,000          | 25          |
+
+### Scaling Replicas
+
+For high availability, increase the number of controller replicas:
+
 ```bash
---set controller.replicaCount=2
+helm upgrade nginx-ingress ingress-nginx/ingress-nginx \
+  --namespace ingress-nginx \
+  --reuse-values \
+  --set controller.replicaCount=2
 ```
 
-**Change load balancer size:**
-```bash
---set controller.service.annotations."load-balancer\.hetzner\.cloud/type"=lb21
-```
+### Custom Values
 
-Options: `lb11` (€5.50) | `lb21` (€11.90) | `lb31` (€18.30)
+You can override settings by creating your own values file:
 
-**Custom values file:**
 ```bash
 helm install nginx-ingress ingress-nginx/ingress-nginx \
-  -n ingress-nginx --create-namespace \
-  -f values.yaml -f my-custom.yaml
+  --namespace ingress-nginx \
+  --create-namespace \
+  --values values.yaml \
+  --values my-custom-values.yaml
 ```
 
 ## Management
 
-**Upgrade:**
+### Upgrade
+
 ```bash
-helm upgrade nginx-ingress ingress-nginx/ingress-nginx -n ingress-nginx -f values.yaml
+helm upgrade nginx-ingress ingress-nginx/ingress-nginx \
+  --namespace ingress-nginx \
+  --values values.yaml
 ```
 
-**Uninstall:**
+### View Configuration
+
+```bash
+helm get values nginx-ingress -n ingress-nginx
+```
+
+### Uninstall
+
 ```bash
 helm uninstall nginx-ingress -n ingress-nginx
 ```
 
+**Note**: This will also delete the Hetzner Load Balancer.
+
+## Usage Example
+
+Create an Ingress resource to route traffic:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: example-ingress
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: example-service
+                port:
+                  number: 80
+```
+
+## Troubleshooting
+
+### Check Controller Logs
+
+```bash
+kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx
+```
+
+### Verify Load Balancer
+
+```bash
+kubectl describe svc -n ingress-nginx nginx-ingress-ingress-nginx-controller
+```
+
+### Test PROXY Protocol
+
+Ensure client IPs are preserved:
+
+```bash
+kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx | grep "X-Forwarded-For"
+```
+
 ## Resources
 
-- [NGINX Ingress Docs](https://kubernetes.github.io/ingress-nginx/)
-- [Hetzner Cloud Controller](https://github.com/hetznercloud/hcloud-cloud-controller-manager)
+- [NGINX Ingress Documentation](https://kubernetes.github.io/ingress-nginx/)
+- [Hetzner Cloud Controller Manager](https://github.com/hetznercloud/hcloud-cloud-controller-manager)
+- [Hetzner Load Balancer Docs](https://docs.hetzner.com/cloud/load-balancers/overview/)

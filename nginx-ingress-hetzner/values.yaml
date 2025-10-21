@@ -1,24 +1,38 @@
+# ==============================================================================
+# NGINX Ingress Controller Configuration for Hetzner Cloud
+# ==============================================================================
+# Optimized configuration for running NGINX Ingress Controller on Hetzner
+# Cloud Kubernetes with Hetzner Load Balancer integration
+# ==============================================================================
+
 controller:
+  # Number of controller replicas
   replicaCount: 1
 
+  # Resource allocation (bare minimum)
   resources:
     requests:
-      cpu: "500m"
-      memory: "512Mi"
+      cpu: "10m"
+      memory: "16Mi"
     limits:
-      cpu: "500m"
-      memory: "512Mi"
+      cpu: "50m"
+      memory: "32Mi"
 
+  # Node selection
+  # Schedule on cx22 instances in fsn1 region
   nodeSelector:
-    node.kubernetes.io/instance-type: cax41
+    node.kubernetes.io/instance-type: cx22
     topology.kubernetes.io/region: fsn1
 
+  # Tolerations for cx22 instance type
   tolerations:
     - key: "node.kubernetes.io/instance-type"
       operator: "Equal"
-      value: "cax41"
+      value: "cx22"
       effect: "NoSchedule"
 
+  # Pod anti-affinity
+  # Prevents multiple ingress controllers on the same node
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
@@ -29,23 +43,33 @@ controller:
                 app.kubernetes.io/name: ingress-nginx
             topologyKey: kubernetes.io/hostname
 
+  # Admission webhook configuration
   admissionWebhooks:
     patch:
       nodeSelector:
-        node.kubernetes.io/instance-type: cax41
+        node.kubernetes.io/instance-type: cx22
       tolerations:
         - key: "node.kubernetes.io/instance-type"
           operator: "Equal"
-          value: "cax41"
+          value: "cx22"
           effect: "NoSchedule"
       affinity: {}
 
+  # Load Balancer service configuration
   service:
     type: LoadBalancer
     externalTrafficPolicy: Local
+    
+    # Hetzner Cloud Load Balancer annotations
     annotations:
+      # Enable PROXY protocol to preserve client IP addresses
       load-balancer.hetzner.cloud/uses-proxyprotocol: "true"
+      
+      # Load balancer type (lb11 = €5.50/month)
+      # Options: lb11, lb21, lb31
       load-balancer.hetzner.cloud/type: "lb11"
 
+  # NGINX configuration
   config:
+    # Enable PROXY protocol support
     use-proxy-protocol: "true"

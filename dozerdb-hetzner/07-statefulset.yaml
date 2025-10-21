@@ -1,3 +1,12 @@
+# ==============================================================================
+# DozerDB StatefulSet
+# ==============================================================================
+# Deploys DozerDB (Neo4j-based graph database) with:
+#   - SSL/TLS encryption for HTTPS and Bolt connections
+#   - Persistent storage using Hetzner Cloud Volumes
+#   - APOC plugin enabled
+# ==============================================================================
+
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -6,35 +15,54 @@ metadata:
 spec:
   serviceName: "dozerdb-headless"
   replicas: 1
+  
   selector:
     matchLabels:
       app: dozerdb
+  
   template:
     metadata:
       labels:
         app: dozerdb
+    
     spec:
       terminationGracePeriodSeconds: 30
+      
+      # Schedule on Hetzner nodes
       nodeSelector:
         cfke.io/provider: hetzner
+      
       containers:
         - name: dozerdb
           image: graphstack/dozerdb:5.26.3.0
+          
+          # Exposed ports
           ports:
             - containerPort: 7474
               name: https
             - containerPort: 7687
               name: bolt
+          
+          # Resource limits and requests (bare minimum)
           resources:
             requests:
-              memory: "4Gi"
-              cpu: "2"
+              memory: "512Mi"
+              cpu: "250m"
             limits:
-              memory: "8Gi"
-              cpu: "4"
+              memory: "1Gi"
+              cpu: "500m"
+          
+          # Environment variables for Neo4j configuration
           env:
+            # =================================================================
+            # Authentication
+            # =================================================================
             - name: NEO4J_AUTH
               value: "neo4j/temppassword"
+            
+            # =================================================================
+            # Plugin Configuration
+            # =================================================================
             - name: NEO4J_PLUGINS
               value: '["apoc"]'
             - name: NEO4J_apoc_export_file_enabled
@@ -43,55 +71,64 @@ spec:
               value: "true"
             - name: NEO4J_dbms_security_procedures_unrestricted
               value: "*"
-
+            
+            # =================================================================
+            # HTTP/HTTPS Configuration
+            # =================================================================
+            # Disable plain HTTP
             - name: NEO4J_server_http_enabled
               value: "false"
             
-            # ssl settings:
-            # 1. Enable the HTTPS connector (Neo4j 5 syntax)
+            # Enable HTTPS connector
             - name: NEO4J_server_https_enabled
               value: "true"
             - name: NEO4J_server_https_listen__address
               value: ":7474"
-
-            # 2. ENABLE the SSL policy named 'https'
-            # (This is dbms.ssl.policy.https.enabled=true)
+            
+            # =================================================================
+            # SSL Policy for HTTPS
+            # =================================================================
             - name: NEO4J_dbms_ssl_policy_https_enabled
               value: "true"
-
-            # 3. DEFINE the 'https' policy's certificate paths
-            # (This is dbms.ssl.policy.https.base_directory)
             - name: NEO4J_dbms_ssl_policy_https_base__directory
               value: "/tls"
-            # (This tells it to use tls.crt instead of the default public.crt)
             - name: NEO4J_dbms_ssl_policy_https_public__certificate
               value: "tls.crt"
-            # (This tells it to use tls.key instead of the default private.key)
             - name: NEO4J_dbms_ssl_policy_https_private__key
               value: "tls.key"
             
-            # --- BOLT Connector (Port 7687) ---
-            - name: NEO4J_server_bolt_tls__level # <--- THIS IS NEW
+            # =================================================================
+            # SSL Policy for Bolt Protocol
+            # =================================================================
+            - name: NEO4J_server_bolt_tls__level
               value: "REQUIRED"
-            - name: NEO4J_dbms_ssl_policy_bolt_enabled # <--- THIS IS NEW
+            - name: NEO4J_dbms_ssl_policy_bolt_enabled
               value: "true"
-            - name: NEO4J_dbms_ssl_policy_bolt_base__directory # <--- THIS IS NEW
+            - name: NEO4J_dbms_ssl_policy_bolt_base__directory
               value: "/tls"
-            - name: NEO4J_dbms_ssl_policy_bolt_public__certificate # <--- THIS IS NEW
+            - name: NEO4J_dbms_ssl_policy_bolt_public__certificate
               value: "tls.crt"
-            - name: NEO4J_dbms_ssl_policy_bolt_private__key # <--- THIS IS NEW
+            - name: NEO4J_dbms_ssl_policy_bolt_private__key
               value: "tls.key"
-
+          
+          # Volume mounts
           volumeMounts:
+            # Persistent data storage
             - name: data
               mountPath: /data
+            
+            # TLS certificates
             - name: tls-secret
               mountPath: /tls
               readOnly: false
+      
+      # Volumes
       volumes:
         - name: tls-secret
           secret:
             secretName: dozerdb-tls
+  
+  # Persistent Volume Claims (bare minimum)
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -101,4 +138,4 @@ spec:
         storageClassName: hcloud-volumes
         resources:
           requests:
-            storage: 100Gi
+            storage: 10Gi

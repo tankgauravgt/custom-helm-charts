@@ -1,14 +1,32 @@
+# ==============================================================================
+# DozerDB Headless Service
+# ==============================================================================
+# Provides stable network identities for StatefulSet pods
+# Used for pod-to-pod communication within the cluster
+#
+# Ports:
+#   - 7474: HTTPS (Neo4j Browser and HTTP API)
+#   - 7687: Bolt (Neo4j binary protocol)
+# ==============================================================================
+
 apiVersion: v1
 kind: Service
 metadata:
   name: dozerdb-headless
   namespace: dozerdb-ns
 spec:
+  # Headless service (no cluster IP assigned)
   clusterIP: None
+  
+  # Select pods with the 'dozerdb' label
   selector:
     app: dozerdb
+  
+  # Exposed ports
   ports:
     - port: 7474
       name: https
+      protocol: TCP
     - port: 7687
       name: bolt
+      protocol: TCP

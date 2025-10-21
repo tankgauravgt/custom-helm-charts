@@ -1,11 +1,26 @@
 #!/bin/bash
+# =============================================================================
+# Kubernetes DNS Configuration Script
+# =============================================================================
+# This script configures custom DNS nameservers for Kubernetes to suppress
+# nameserver-related issues. It creates a custom resolv.conf and configures
+# kubelet to use it.
+# =============================================================================
+
 set -euo pipefail
 
-# --- 1️⃣ Create custom resolv.conf ---
-echo "🚀 Creating /etc/kubernetes/resolv.conf with IPv4 + IPv6 nameservers..."
-mkdir -p /etc/kubernetes
+# Configuration
+readonly KUBE_RESOLV_CONF="/etc/kubernetes/resolv.conf"
+readonly KUBELET_CONFIG_FILE="/etc/default/kubelet"
 
-cat <<EOF >/etc/kubernetes/resolv.conf
+# =============================================================================
+# Step 1: Create Custom DNS Configuration
+# =============================================================================
+create_custom_resolv_conf() {
+    echo "🚀 Creating custom DNS configuration..."
+    mkdir -p /etc/kubernetes
+
+    cat <<EOF >"${KUBE_RESOLV_CONF}"
 # IPv6 DNS servers
 nameserver 2001:4860:4860::8888     # Google IPv6
 # nameserver 2606:4700:4700::1111     # Cloudflare IPv6
@@ -19,31 +34,65 @@ nameserver 1.1.1.1                  # Cloudflare IPv4
 options ndots:5
 EOF
 
-echo "✅ /etc/kubernetes/resolv.conf created."
+    echo "✅ Custom DNS configuration created at ${KUBE_RESOLV_CONF}"
+}
 
-# --- 2️⃣ Configure kubelet to use the new resolv.conf ---
-KUBELET_DEFAULT_FILE="/etc/default/kubelet"
-
-if [ -f "$KUBELET_DEFAULT_FILE" ]; then
-    echo "🚀 Updating kubelet to use /etc/kubernetes/resolv.conf..."
-    if grep -q "KUBELET_EXTRA_ARGS" "$KUBELET_DEFAULT_FILE"; then
-        sed -i 's|KUBELET_EXTRA_ARGS=.*|KUBELET_EXTRA_ARGS="--resolv-conf=/etc/kubernetes/resolv.conf"|' "$KUBELET_DEFAULT_FILE"
-    else
-        echo 'KUBELET_EXTRA_ARGS="--resolv-conf=/etc/kubernetes/resolv.conf"' >>"$KUBELET_DEFAULT_FILE"
+# =============================================================================
+# Step 2: Configure Kubelet
+# =============================================================================
+configure_kubelet() {
+    if [ ! -f "${KUBELET_CONFIG_FILE}" ]; then
+        echo "⚠️  Kubelet config file not found at ${KUBELET_CONFIG_FILE}"
+        echo "    Skipping kubelet configuration."
+        return
     fi
-    echo "✅ kubelet configured."
-else
-    echo "⚠️ /etc/default/kubelet not found — skipping configuration."
-fi
 
-# --- 3️⃣ Restart kubelet ---
-if systemctl list-units --type=service | grep -q kubelet; then
-    echo "🚀 Restarting kubelet..."
+    echo "🚀 Configuring kubelet to use custom DNS configuration..."
+    
+    local kubelet_args="KUBELET_EXTRA_ARGS=\"--resolv-conf=${KUBE_RESOLV_CONF}\""
+    
+    if grep -q "KUBELET_EXTRA_ARGS" "${KUBELET_CONFIG_FILE}"; then
+        # Update existing configuration
+        sed -i "s|KUBELET_EXTRA_ARGS=.*|${kubelet_args}|" "${KUBELET_CONFIG_FILE}"
+    else
+        # Add new configuration
+        echo "${kubelet_args}" >> "${KUBELET_CONFIG_FILE}"
+    fi
+    
+    echo "✅ Kubelet configuration updated"
+}
+
+# =============================================================================
+# Step 3: Restart Kubelet Service
+# =============================================================================
+restart_kubelet() {
+    if ! systemctl list-units --type=service | grep -q kubelet; then
+        echo "⚠️  Kubelet service not found or managed externally"
+        echo "    You may need to manually recycle the node (e.g., in CloudFleet)"
+        return
+    fi
+
+    echo "🚀 Restarting kubelet service..."
     systemctl daemon-reload
     systemctl restart kubelet
-    echo "✅ kubelet restarted successfully."
-else
-    echo "⚠️ kubelet service not found or managed externally. You may need to recycle the node (e.g. CloudFleet)."
-fi
+    echo "✅ Kubelet restarted successfully"
+}
 
-echo "🎉 Done! Custom DNS configuration applied system-wide."
+# =============================================================================
+# Main Execution
+# =============================================================================
+main() {
+    echo "=================================="
+    echo "Kubernetes DNS Configuration"
+    echo "=================================="
+    echo ""
+    
+    create_custom_resolv_conf
+    configure_kubelet
+    restart_kubelet
+    
+    echo ""
+    echo "🎉 DNS configuration completed successfully!"
+}
+
+main

@@ -1,3 +1,12 @@
+# ==============================================================================
+# Let's Encrypt Certificate Issuer
+# ==============================================================================
+# Configures cert-manager to issue SSL/TLS certificates from Let's Encrypt
+# using DNS-01 challenge with Cloudflare DNS
+#
+# IMPORTANT: Replace {{ hello@example.com }} with your actual email address
+# ==============================================================================
+
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
@@ -5,10 +14,17 @@ metadata:
   namespace: dozerdb-ns
 spec:
   acme:
+    # Email for Let's Encrypt notifications (certificate expiry, etc.)
     email: {{ hello@example.com }}
+    
+    # Let's Encrypt production server
     server: https://acme-v02.api.letsencrypt.org/directory
+    
+    # Secret to store the ACME account private key
     privateKeySecretRef:
       name: letsencrypt-prod
+    
+    # DNS-01 challenge solver using Cloudflare
     solvers:
       - dns01:
           cloudflare:
