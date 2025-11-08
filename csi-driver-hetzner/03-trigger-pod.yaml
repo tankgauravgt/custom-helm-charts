@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hetzner-secret-trigger
+  namespace: kube-system
+  labels:
+    azure.workload.identity/use: "true"
+spec:
+  serviceAccountName: hetzner-secret-fetcher-sa
+  containers:
+  - name: sleeper
+    image: busybox
+    command: ["sleep", "36000"]
+    volumeMounts:
+    - mountPath: /mnt/secrets-store
+      name: secrets-store-inline
+      readOnly: true
+  volumes:
+  - name: secrets-store-inline
+    csi:
+      driver: secrets-store.csi.k8s.io
+      readOnly: true
+      volumeAttributes:
+        secretProviderClass: "hetzner-spc"

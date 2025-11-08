@@ -1,0 +1,5 @@
+controller:
+  hcloudToken:
+    existingSecret:
+      name: hetzner-csi-secret
+      key: hcloudToken
