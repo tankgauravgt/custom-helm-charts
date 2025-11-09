@@ -1,0 +1,44 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: min-node-system
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: min-node-keeper
+  namespace: min-node-system
+spec:
+  replicas: 3
+  
+  selector:
+    matchLabels:
+      app: min-node-keeper
+  
+  template:
+    metadata:
+      labels:
+        app: min-node-keeper
+      annotations:
+        karpenter.sh/do-not-disrupt: "true"
+    
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values: ["min-node-keeper"]
+              topologyKey: kubernetes.io/hostname
+      
+      containers:
+        - name: keeper
+          image: registry.k8s.io/pause:3.9
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
